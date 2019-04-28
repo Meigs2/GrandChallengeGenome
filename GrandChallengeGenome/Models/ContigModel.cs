@@ -8,8 +8,8 @@ namespace GrandChallengeGenome.Models
     {
         public string Contig { get; set; }
 
-        public HashSet<ContigModel> InContigModels { get; set; }
+        public HashSet<ContigModel> PreviousContigModels { get; set; } = new HashSet<ContigModel>();
 
-        public HashSet<ContigModel> OutContigModels { get; set; }
+        public HashSet<ContigModel> NextContigModels { get; set; } = new HashSet<ContigModel>();
     }
 }

@@ -46,7 +46,7 @@ namespace REvernus.Core.Serialization
         /// <typeparam name="T"></typeparam>
         /// <param name="path"></param>
         /// <returns></returns>
-        public static object DeserializeData<T>(string path)
+        public static List<BaseContigModel> DeserializeData(string path)
         {
             try
             {
