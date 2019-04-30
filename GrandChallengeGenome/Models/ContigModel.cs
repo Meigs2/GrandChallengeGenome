@@ -11,5 +11,7 @@ namespace GrandChallengeGenome.Models
         public HashSet<ContigModel> PreviousContigModels { get; set; } = new HashSet<ContigModel>();
 
         public HashSet<ContigModel> NextContigModels { get; set; } = new HashSet<ContigModel>();
+
+        public bool MarkedForDeletion { get; set; } = false;
     }
 }
