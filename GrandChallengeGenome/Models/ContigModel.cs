@@ -6,7 +6,7 @@ namespace GrandChallengeGenome.Models
 {
     public class ContigModel
     {
-        public string Contig { get; set; }
+        public string Contig { get; set; } = "";
 
         public Dictionary<ContigModel, int> PreviousContigModels { get; set; } = new Dictionary<ContigModel, int>();
 

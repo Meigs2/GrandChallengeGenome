@@ -1,6 +1,7 @@
 ﻿using GrandChallengeGenome.Models;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.VisualBasic.FileIO;
@@ -139,7 +140,12 @@ namespace GrandChallengeGenome
             _contigGraph = _contigDictionaryGraph.Values.ToList();
             _contigDictionaryGraph = null;
 
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
             ResolveBubblesAndBranches();
+
+            ProduceFinalContigs();
 
         }
 
@@ -185,17 +191,80 @@ namespace GrandChallengeGenome
             }
             DeleteMarked();
 
-            //var a = SearchPathsForwardGreedy();
-
             // Reverse search from ending nodes to beginning ones, until we reach a starting node.
             //afterConvergeContigs = null;
 
             //afterConvergeContigs = null;
         }
 
-        private void SearchPathsForwardGreedy()
+        private void ProduceFinalContigs()
         {
+            var localContigGraph = new List<ContigModel>(_contigGraph);
 
+            var finalList = new List<ContigModel>();
+
+            var startingContigs = localContigGraph
+                .Where(c => c.PreviousContigModels.Count == 0).ToList();
+
+            // Lets try a greedy approach to finding the shortest path, then checking if there are multiple instances of the
+            // Same graph in the new list.
+            foreach (var startingContig in startingContigs)
+            {
+                var bestContig = startingContig;
+                var currentContig = startingContig;
+                while (currentContig.NextContigModels.Count != 0)
+                {
+                    // if split, pick path with most visits
+                    if (currentContig.NextContigModels.Count > 1)
+                    {
+                        KeyValuePair<ContigModel, int> mostVisitedContig = new KeyValuePair<ContigModel, int>();
+                        foreach (var nextContig in currentContig.NextContigModels)
+                        {
+                            if (mostVisitedContig.Value == 0 || nextContig.Value > mostVisitedContig.Value)
+                            {
+                                if (nextContig.Key.Visited)
+                                {
+                                    goto exitIfVisited;
+                                }
+
+                                mostVisitedContig = nextContig;
+                            }
+                        }
+
+                        bestContig.Contig += mostVisitedContig.Key.Contig;
+                        mostVisitedContig.Key.Visited = true;
+                        currentContig = mostVisitedContig.Key;
+                        continue;
+
+                        exitIfVisited:
+                        bestContig.Contig += mostVisitedContig.Key.Contig;
+                        break;
+
+                    }
+                    if (currentContig.NextContigModels.Keys.First().Visited == false)
+                    {
+                        bestContig.Contig += currentContig.NextContigModels.Keys.First().Contig;
+                        currentContig.NextContigModels.Keys.First().Visited = true;
+                        currentContig = currentContig.NextContigModels.Keys.First();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+                finalList.Add(bestContig);
+                // Reset visited Graph.
+                var a = localContigGraph.Where(c => c.Visited);
+                foreach (var contigModel in a)
+                {
+                    contigModel.Visited = false;
+                }
+            }
+
+            var copy = finalList.ToList();
+            finalList.RemoveAll(x => copy.Any(y => x.Contig != y.Contig && y.Contig.Contains(x.Contig)));
+
+            CalculateN50(finalList);
         }
 
         private void DeleteMarked()

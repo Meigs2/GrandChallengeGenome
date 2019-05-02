@@ -11,7 +11,7 @@ namespace GrandChallengeGenome
         private static void Main(string[] args)
         {
             // try and serialize file provided in args
-            var data = Serializer.DeserializeData("C:\\Users\\Connor\\Downloads\\rand.500.2.fq");
+            var data = Serializer.DeserializeData("C:\\Users\\Connor\\Downloads\\rand.500.1.fq");
 
             //DoTestData(data); return;
 
