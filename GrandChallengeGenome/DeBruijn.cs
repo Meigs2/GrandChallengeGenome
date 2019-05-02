@@ -8,6 +8,7 @@ using System.Net.Mime;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.VisualBasic.FileIO;
+using SearchOption = Microsoft.VisualBasic.FileIO.SearchOption;
 
 namespace GrandChallengeGenome
 {
@@ -192,6 +193,10 @@ namespace GrandChallengeGenome
                 SimplifyForwardFromContig(afterConvergeContig);
             }
             DeleteMarked();
+
+            // Reduce num starting nodes
+
+            // Reduce num ending nodes
         }
 
         private void ProduceFinalContigs()
@@ -203,54 +208,74 @@ namespace GrandChallengeGenome
             var startingContigs = localContigGraph
                 .Where(c => c.PreviousContigModels.Count == 0).ToList();
 
-            // Lets try a greedy approach to finding the shortest path, then checking if there are multiple instances of the
-            // Same graph in the new list.
+            //ContigModel bestContig;
+
+            var routeList = new List<List<ContigModel>>();
+
+            // DFS for 
             foreach (var startingContig in startingContigs)
             {
-                var bestContig = startingContig;
-                var currentContig = startingContig;
-                while (currentContig.NextContigModels.Count != 0)
+                // Recurtsive DFS on node
+                var route = new List<ContigModel>();
+                var stack = new Stack<ContigModel>();
+                stack.Push(startingContig);
+                while (stack.Count != 0)
                 {
-                    // if split, pick path with most visits
-                    if (currentContig.NextContigModels.Count > 1)
+                    var currentContig = stack.Pop();
+                    route.Add(currentContig);
+                    if (currentContig.Visited)
                     {
-                        KeyValuePair<ContigModel, int> mostVisitedContig = new KeyValuePair<ContigModel, int>();
-                        foreach (var nextContig in currentContig.NextContigModels)
-                        {
-                            if (mostVisitedContig.Value == 0 || nextContig.Value > mostVisitedContig.Value)
-                            {
-                                if (nextContig.Key.Visited)
-                                {
-                                    goto exitIfVisited;
-                                }
+                        var currentIndex = route.IndexOf(currentContig);
+                        route.RemoveRange(currentIndex, route.Count - currentIndex);
+                        continue;
+                    }
 
-                                mostVisitedContig = nextContig;
+                    if (currentContig.NextContigModels.Count == 0)
+                    {
+                        // We've found a end node! huzzah!
+
+                        if (currentContig.VisitedEndNode)
+                        {
+                            var contestingRoute = routeList.FirstOrDefault(c => c.Contains(currentContig));
+                            // get length of consesting route
+                            var contestingString = "";
+                            foreach (var node in contestingRoute)
+                            {
+                                contestingString += node.Contig;
                             }
+
+                            // get length of our current route
+                            var currentString = "";
+                            foreach (var node in route)
+                            {
+                                currentString += node.Contig;
+                            }
+
+                            if (currentString.Length > contestingString.Length)
+                            {
+                                routeList.Remove(contestingRoute);
+                                routeList.Add(route);
+                                break;
+                            }
+
+                            // check which one is longer, and replace, etc.
+                            route.Remove(currentContig);
+                            continue;
                         }
 
-                        bestContig.Contig += mostVisitedContig.Key.Contig;
-                        mostVisitedContig.Key.Visited = true;
-                        currentContig = mostVisitedContig.Key;
-                        continue;
-
-                        exitIfVisited:
-                        bestContig.Contig += mostVisitedContig.Key.Contig;
+                        currentContig.VisitedEndNode = true;
+                        routeList.Add(route);
                         break;
+                    }
 
-                    }
-                    if (currentContig.NextContigModels.Keys.First().Visited == false)
+                    currentContig.Visited = true;
+                    var test = currentContig.NextContigModels.OrderBy(x => x.Value).ToList();
+                    foreach (var contigModel in currentContig.NextContigModels.OrderBy(x => x.Value))
                     {
-                        bestContig.Contig += currentContig.NextContigModels.Keys.First().Contig;
-                        currentContig.NextContigModels.Keys.First().Visited = true;
-                        currentContig = currentContig.NextContigModels.Keys.First();
-                    }
-                    else
-                    {
-                        break;
+                        stack.Push(contigModel.Key);
                     }
                 }
-                finalList.Add(bestContig);
-                // Reset visited Graph.
+                // Clear visited nodes.
                 var a = localContigGraph.Where(c => c.Visited);
                 foreach (var contigModel in a)
                 {
@@ -258,13 +283,125 @@ namespace GrandChallengeGenome
                 }
             }
 
-            var copy = finalList.ToList();
+            foreach (var route in routeList)
+            {
+                var combinedContig = new ContigModel(); 
+                foreach (var contigModel in route)
+                {
+                    combinedContig.Contig += contigModel.Contig;
+                }
+                finalList.Add(combinedContig);
+            }
+
+            //// Lets try a greedy approach to finding the shortest path, then checking if there are multiple instances of the
+            //// Same graph in the new list.
+            //foreach (var startingContig in startingContigs)
+            //{
+            //    bestContig = startingContig;
+            //    var currentContig = startingContig;
+            //    while (currentContig.NextContigModels.Count != 0)
+            //    {
+            //        // if split, pick path with most visits
+            //        if (currentContig.NextContigModels.Count > 1)
+            //        {
+            //            KeyValuePair<ContigModel, int> mostVisitedContig = new KeyValuePair<ContigModel, int>();
+            //            foreach (var nextContig in currentContig.NextContigModels)
+            //            {
+            //                if (mostVisitedContig.Value == 0 || nextContig.Value > mostVisitedContig.Value)
+            //                {
+            //                    if (nextContig.Key.Visited)
+            //                    {
+            //                        goto exitIfVisited;
+            //                    }
+
+            //                    mostVisitedContig = nextContig;
+            //                }
+            //            }
+
+            //            bestContig.Contig += mostVisitedContig.Key.Contig;
+            //            mostVisitedContig.Key.Visited = true;
+            //            currentContig = mostVisitedContig.Key;
+            //            continue;
+
+            //            exitIfVisited:
+            //            bestContig.Contig += mostVisitedContig.Key.Contig;
+            //            break;
+
+            //        }
+            //        if (currentContig.NextContigModels.Keys.First().Visited == false)
+            //        {
+            //            bestContig.Contig += currentContig.NextContigModels.Keys.First().Contig;
+            //            currentContig.NextContigModels.Keys.First().Visited = true;
+            //            currentContig = currentContig.NextContigModels.Keys.First();
+            //        }
+            //        else
+            //        {
+            //            break;
+            //        }
+            //    }
+
+
+            //    finalList.Add(bestContig);
+            //    // Reset visited Graph.
+            //    var a = localContigGraph.Where(c => c.Visited);
+            //    foreach (var contigModel in a)
+            //    {
+            //        contigModel.Visited = false;
+            //    }
+            //}
+
+            //var copy = finalList.ToList();
             //finalList.RemoveAll(x => copy.Any(y => x.Contig != y.Contig && y.Contig.Contains(x.Contig)));
 
             // Export Data
-
             SaveData(finalList);
         }
+
+        //private List<ContigModel> SearchContig(ContigModel currentContig, List<ContigModel> route)
+        //{
+        //    var currentRoute = new List<ContigModel>(route);
+        //    if (currentContig.NextContigModels.Count > 1)
+        //    {
+        //        var toSearch = currentContig.NextContigModels.Keys.OrderByDescending(c => c.NextContigModels.Values.Count).ToList();
+        //        foreach (var contigModel in toSearch)
+        //        {
+        //            if (contigModel.Visited)
+        //            {
+        //                return null;
+        //            }
+        //            contigModel.Visited = true;
+        //            currentRoute.Add(contigModel);
+        //            var a = SearchContig(contigModel, currentRoute);
+        //            if (a != null)
+        //            {
+        //                return a;
+        //            }
+        //            currentRoute.Remove(contigModel);
+        //        }
+        //    }
+        //    else if (currentContig.NextContigModels.Count == 1)
+        //    {
+        //        var nextContig = currentContig.NextContigModels.First();
+        //        nextContig.Key.Visited = true;
+        //        currentRoute.Add(nextContig.Key);
+        //        var a = SearchContig(nextContig.Key, currentRoute);
+        //        if (a != null)
+        //        {
+        //            return a;
+        //        }
+        //        currentRoute.Remove(nextContig.Key);
+        //    }
+        //    else
+        //    {
+        //        if (currentContig.VisitedEndNode)
+        //        {
+        //            return null;
+        //        }
+        //        currentContig.VisitedEndNode = true;
+        //        route.Add(currentContig);
+        //    }
+        //    return route;
+        //}
 
         private void SaveData(List<ContigModel> contigsToExport)
         {

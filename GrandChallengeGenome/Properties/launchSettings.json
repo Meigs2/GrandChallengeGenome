@@ -1,7 +1,8 @@
 {
   "profiles": {
     "GrandChallengeGenome": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\Connor\\Downloads\\rand.500.2.fq"
     }
   }
 }

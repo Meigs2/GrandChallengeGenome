@@ -16,6 +16,8 @@ namespace GrandChallengeGenome.Models
 
         public bool Visited { get; set; } = false;
 
+        public bool VisitedEndNode { get; set; } = false;
+
         public bool MarkedForDeletion { get; set; } = false;
     }
 }

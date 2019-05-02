@@ -14,7 +14,7 @@ namespace GrandChallengeGenome
             var data = Serializer.DeserializeData(args[0]);
 
             var g = new DeBruijn(data);
-            g.AssembleGenome(int.Parse(args[1]));
+            g.AssembleGenome(50);
         }
     }
 }
