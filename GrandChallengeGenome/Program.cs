@@ -11,28 +11,10 @@ namespace GrandChallengeGenome
         private static void Main(string[] args)
         {
             // try and serialize file provided in args
-            var data = Serializer.DeserializeData("C:\\Users\\Connor\\Downloads\\rand.500.1.fq");
+            var data = Serializer.DeserializeData(args[0]);
 
-            //DoTestData(data); return;
-
-            // loop and build several debrujin graphs
-            for (int i = 30; i < 500; i+=20)
-            {
-                var g = new DeBruijn(data);
-                g.BuildDeBruijnGraph(i);
-                g.DisposeMemory();
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-            }
-        }
-
-        private static void DoTestData(List<BaseContigModel> data)
-        {
             var g = new DeBruijn(data);
-            g.BuildDeBruijnGraph(1);
-            g.DisposeMemory();
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
+            g.AssembleGenome(int.Parse(args[1]));
         }
     }
 }

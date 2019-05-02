@@ -2,7 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.IO;
 using System.Linq;
+using System.Net.Mime;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.VisualBasic.FileIO;
 
@@ -51,7 +54,7 @@ namespace GrandChallengeGenome
         /// Builds a DeBruijn Graph based on the contigs given in the constructor spaced by a specified k-mer.
         /// </summary>
         /// <param name="kMer"></param>
-        public void BuildDeBruijnGraph(int kMer)
+        public void AssembleGenome(int kMer)
         {
             _kMerSize = kMer;
             Console.WriteLine($"Building Graph with k-mer of size {_kMerSize}...");
@@ -160,7 +163,6 @@ namespace GrandChallengeGenome
                 SimplifyForwardFromContig(contig);
             }
             DeleteMarked();
-            //startingContigs = null;
 
 
             var startingContigs = _contigGraph
@@ -190,11 +192,6 @@ namespace GrandChallengeGenome
                 SimplifyForwardFromContig(afterConvergeContig);
             }
             DeleteMarked();
-
-            // Reverse search from ending nodes to beginning ones, until we reach a starting node.
-            //afterConvergeContigs = null;
-
-            //afterConvergeContigs = null;
         }
 
         private void ProduceFinalContigs()
@@ -262,9 +259,22 @@ namespace GrandChallengeGenome
             }
 
             var copy = finalList.ToList();
-            finalList.RemoveAll(x => copy.Any(y => x.Contig != y.Contig && y.Contig.Contains(x.Contig)));
+            //finalList.RemoveAll(x => copy.Any(y => x.Contig != y.Contig && y.Contig.Contains(x.Contig)));
 
-            CalculateN50(finalList);
+            // Export Data
+
+            SaveData(finalList);
+        }
+
+        private void SaveData(List<ContigModel> contigsToExport)
+        {
+            List<string> exportStrings = new List<string>();
+            foreach (var contigModel in contigsToExport)
+            {
+                exportStrings.Add($"> Built with k-mer of size {_kMerSize}.");
+                exportStrings.Add(contigModel.Contig);
+            }
+            System.IO.File.WriteAllLines(Directory.GetCurrentDirectory()+$"\\rand.n.n50_{CalculateN50(contigsToExport)}.fa", exportStrings);
         }
 
         private void DeleteMarked()
