@@ -16,7 +16,7 @@ namespace GrandChallengeGenome
             //DoTestData(data); return;
 
             // loop and build several debrujin graphs
-            for (int i = 100; i <= 100; i+=10)
+            for (int i = 30; i < 500; i+=20)
             {
                 var g = new DeBruijn(data);
                 g.BuildDeBruijnGraph(i);
@@ -29,7 +29,7 @@ namespace GrandChallengeGenome
         private static void DoTestData(List<BaseContigModel> data)
         {
             var g = new DeBruijn(data);
-            g.BuildDeBruijnGraph(3);
+            g.BuildDeBruijnGraph(1);
             g.DisposeMemory();
             GC.Collect();
             GC.WaitForPendingFinalizers();

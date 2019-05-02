@@ -4,13 +4,17 @@ using System.Text;
 
 namespace GrandChallengeGenome.Models
 {
-    class ContigModel
+    public class ContigModel
     {
         public string Contig { get; set; }
 
-        public HashSet<ContigModel> PreviousContigModels { get; set; } = new HashSet<ContigModel>();
+        public Dictionary<ContigModel, int> PreviousContigModels { get; set; } = new Dictionary<ContigModel, int>();
 
-        public HashSet<ContigModel> NextContigModels { get; set; } = new HashSet<ContigModel>();
+        public Dictionary<ContigModel, int> NextContigModels { get; set; } = new Dictionary<ContigModel, int>();
+
+
+
+        public bool Visited { get; set; } = false;
 
         public bool MarkedForDeletion { get; set; } = false;
     }
