@@ -47,7 +47,7 @@ namespace GrandChallengeGenome
         /// Builds a DeBruijn Graph based on the contigs given in the constructor spaced by a specified k-mer.
         /// </summary>
         /// <param name="kMer"></param>
-        public void AssembleGenome(int kMer)
+        public void AssembleAndExportGenome(int kMer)
         {
             _kMerSize = kMer;
             Console.WriteLine($"Building Graph with k-mer of size {_kMerSize}...");

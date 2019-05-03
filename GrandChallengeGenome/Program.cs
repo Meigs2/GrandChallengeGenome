@@ -13,8 +13,8 @@ namespace GrandChallengeGenome
             // try and serialize file provided in args
             var data = Serializer.DeserializeData(args[0]);
 
-            var g = new DeBruijn(data);
-            g.AssembleGenome(50);
+            var graph = new DeBruijn(data);
+            graph.AssembleAndExportGenome(50);
         }
     }
 }
