@@ -1,14 +1,8 @@
 ﻿using GrandChallengeGenome.Models;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
-using System.Net.Mime;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using Microsoft.VisualBasic.FileIO;
-using SearchOption = Microsoft.VisualBasic.FileIO.SearchOption;
 
 namespace GrandChallengeGenome
 {
@@ -122,6 +116,7 @@ namespace GrandChallengeGenome
             var baseContigs = new List<ContigModel>();
             var mergingContigs = new List<ContigModel>();
             var forkContigs = new List<ContigModel>();
+            var endingContigs = new List<ContigModel>();
             foreach (var contig in contigs)
             {
                 if (contig.PreviousContigModels.Count == 0) baseContigs.Add(contig);
@@ -131,9 +126,14 @@ namespace GrandChallengeGenome
 
                 // merging contigs
                 if (contig.PreviousContigModels.Count > 1) mergingContigs.Add(contig);
+
+                if (contig.NextContigModels.Count == 0)
+                {
+                    endingContigs.Add(contig);
+                }
             }
 
-            Console.WriteLine($"Found {baseContigs.Count} starting paths. Found {mergingContigs.Count} merging contigs. Found {forkContigs.Count} diverging contigs.");
+            Console.WriteLine($"Found {baseContigs.Count} starting paths. Found {mergingContigs.Count} merging contigs. Found {forkContigs.Count} diverging contigs. Found {endingContigs.Count} end contigs.");
         }
 
         /// <summary>
@@ -155,8 +155,6 @@ namespace GrandChallengeGenome
 
         private void ResolveBubblesAndBranches()
         {
-            CountStartsMergesDiverges(_contigGraph);
-
             // Reduce pipes that start at a contig with one output ( a starting node )
 
             foreach (var contig in _contigGraph.Where(c => c.PreviousContigModels.Count == 0))
@@ -167,9 +165,8 @@ namespace GrandChallengeGenome
 
 
             var startingContigs = _contigGraph
-            .Where(c => c.NextContigModels.Count == 1 && c.PreviousContigModels.Count == 0).ToList();
+                .Where(c => c.NextContigModels.Count == 1 && c.PreviousContigModels.Count == 0).ToList();
 
-            CountStartsMergesDiverges(_contigGraph);
 
             // Reduce pipes that start after a diverge
             foreach (var afterDivergeContig in _contigGraph.Where(c => c.NextContigModels.Count > 1))
@@ -181,9 +178,6 @@ namespace GrandChallengeGenome
                 }
             }
             DeleteMarked();
-            CountStartsMergesDiverges(_contigGraph);
-
-
 
             // Reduce pipes that start after a merge.
 
@@ -194,9 +188,7 @@ namespace GrandChallengeGenome
             }
             DeleteMarked();
 
-            // Reduce num starting nodes
-
-            // Reduce num ending nodes
+            CountStartsMergesDiverges(_contigGraph);
         }
 
         private void ProduceFinalContigs()
@@ -212,21 +204,22 @@ namespace GrandChallengeGenome
 
             var routeList = new List<List<ContigModel>>();
 
+            int currentStartingIndex = 0;
             // DFS for 
             foreach (var startingContig in startingContigs)
             {
                 // Recurtsive DFS on node
-                var route = new List<ContigModel>();
+                var currentRoute = new List<ContigModel>();
                 var stack = new Stack<ContigModel>();
                 stack.Push(startingContig);
                 while (stack.Count != 0)
                 {
                     var currentContig = stack.Pop();
-                    route.Add(currentContig);
+                    currentRoute.Add(currentContig);
                     if (currentContig.Visited)
                     {
-                        var currentIndex = route.IndexOf(currentContig);
-                        route.RemoveRange(currentIndex, route.Count - currentIndex);
+                        var currentIndex = currentRoute.IndexOf(currentContig);
+                        currentRoute.RemoveRange(currentIndex, currentRoute.Count - currentIndex);
                         continue;
                     }
 
@@ -234,58 +227,121 @@ namespace GrandChallengeGenome
                     {
                         // We've found a end node! huzzah!
 
+                        // Resolve if we've already visited this end node.
                         if (currentContig.VisitedEndNode)
                         {
                             var contestingRoute = routeList.FirstOrDefault(c => c.Contains(currentContig));
                             // get length of consesting route
-                            var contestingString = "";
+                            var contigLength = 0;
                             foreach (var node in contestingRoute)
                             {
-                                contestingString += node.Contig;
+                                contigLength += node.Contig.Length;
                             }
 
                             // get length of our current route
-                            var currentString = "";
-                            foreach (var node in route)
+                            var currentContigLength = 0;
+                            foreach (var node in currentRoute)
                             {
-                                currentString += node.Contig;
+                                currentContigLength += node.Contig.Length;
                             }
 
-                            if (currentString.Length > contestingString.Length)
+
+                            // check which one is longer, and replace
+                            if (currentContigLength > contigLength)
                             {
                                 routeList.Remove(contestingRoute);
-                                routeList.Add(route);
+                                routeList.Add(currentRoute);
                                 break;
                             }
 
-                            // check which one is longer, and replace, etc.
-                            route.Remove(currentContig);
+                            currentRoute.Remove(currentContig);
                             continue;
                         }
 
                         currentContig.VisitedEndNode = true;
-                        routeList.Add(route);
+                        foreach (var contigModel in currentRoute)
+                        {
+                            contigModel.IsPartOfRoute = true;
+                        }
+                        routeList.Add(currentRoute);
                         break;
                     }
 
+                    // Resolve if we've already been down this path.
+                    if (currentContig.IsPartOfRoute)
+                    {
+                        var contestingRoute = routeList.FirstOrDefault(c => c.Contains(currentContig));
+
+                        // Get length of contesting route up until this point.
+                        var contigLength = 0;
+                        foreach (var node in contestingRoute)
+                        {
+                            if (node == currentContig)
+                            {
+                                break;
+                            }
+                            contigLength += node.Contig.Length;
+                        }
+
+                        // Get length of our route up until this point.
+                        // Get length of contesting route up until this point.
+                        var currentContigLength = 0;
+                        foreach (var node in currentRoute)
+                        {
+                            if (node == currentContig)
+                            {
+                                break;
+                            }
+                            currentContigLength += node.Contig.Length;
+                        }
+
+                        // check which one is longer, and replace if current is longer
+                        if (currentContigLength > contigLength)
+                        {
+                            foreach (var contigModel in contestingRoute)
+                            {
+                                contigModel.IsPartOfRoute = false;
+                            }
+
+                            foreach (var contigModel in currentRoute)
+                            {
+                                contigModel.IsPartOfRoute = false;
+                            }
+                            var currentIndexInContesting = contestingRoute.IndexOf(currentContig);
+                            contestingRoute.RemoveRange(0, currentIndexInContesting);
+                            contestingRoute.InsertRange(0,currentRoute);
+                            foreach (var contigModel in contestingRoute)
+                            {
+                                contigModel.IsPartOfRoute = true;
+                            }
+                            break;
+                        }
+
+                        currentRoute.Remove(currentContig);
+                        continue;
+                    }
+
                     currentContig.Visited = true;
-                    var test = currentContig.NextContigModels.OrderBy(x => x.Value).ToList();
+
                     foreach (var contigModel in currentContig.NextContigModels.OrderBy(x => x.Value))
                     {
                         stack.Push(contigModel.Key);
                     }
                 }
+
                 // Clear visited nodes.
-                var a = localContigGraph.Where(c => c.Visited);
+                var a = localContigGraph.Where(c => c.IsPartOfRoute).ToList();
                 foreach (var contigModel in a)
                 {
                     contigModel.Visited = false;
                 }
+
+                Console.WriteLine($"\rSearching starting point {currentStartingIndex++}/{startingContigs.Count}  ");
             }
 
             foreach (var route in routeList)
             {
-                var combinedContig = new ContigModel(); 
+                var combinedContig = new ContigModel();
                 foreach (var contigModel in route)
                 {
                     combinedContig.Contig += contigModel.Contig;
@@ -293,67 +349,7 @@ namespace GrandChallengeGenome
                 finalList.Add(combinedContig);
             }
 
-            //// Lets try a greedy approach to finding the shortest path, then checking if there are multiple instances of the
-            //// Same graph in the new list.
-            //foreach (var startingContig in startingContigs)
-            //{
-            //    bestContig = startingContig;
-            //    var currentContig = startingContig;
-            //    while (currentContig.NextContigModels.Count != 0)
-            //    {
-            //        // if split, pick path with most visits
-            //        if (currentContig.NextContigModels.Count > 1)
-            //        {
-            //            KeyValuePair<ContigModel, int> mostVisitedContig = new KeyValuePair<ContigModel, int>();
-            //            foreach (var nextContig in currentContig.NextContigModels)
-            //            {
-            //                if (mostVisitedContig.Value == 0 || nextContig.Value > mostVisitedContig.Value)
-            //                {
-            //                    if (nextContig.Key.Visited)
-            //                    {
-            //                        goto exitIfVisited;
-            //                    }
 
-            //                    mostVisitedContig = nextContig;
-            //                }
-            //            }
-
-            //            bestContig.Contig += mostVisitedContig.Key.Contig;
-            //            mostVisitedContig.Key.Visited = true;
-            //            currentContig = mostVisitedContig.Key;
-            //            continue;
-
-            //            exitIfVisited:
-            //            bestContig.Contig += mostVisitedContig.Key.Contig;
-            //            break;
-
-            //        }
-            //        if (currentContig.NextContigModels.Keys.First().Visited == false)
-            //        {
-            //            bestContig.Contig += currentContig.NextContigModels.Keys.First().Contig;
-            //            currentContig.NextContigModels.Keys.First().Visited = true;
-            //            currentContig = currentContig.NextContigModels.Keys.First();
-            //        }
-            //        else
-            //        {
-            //            break;
-            //        }
-            //    }
-
-
-            //    finalList.Add(bestContig);
-            //    // Reset visited Graph.
-            //    var a = localContigGraph.Where(c => c.Visited);
-            //    foreach (var contigModel in a)
-            //    {
-            //        contigModel.Visited = false;
-            //    }
-            //}
-
-            //var copy = finalList.ToList();
-            //finalList.RemoveAll(x => copy.Any(y => x.Contig != y.Contig && y.Contig.Contains(x.Contig)));
-
-            // Export Data
             SaveData(finalList);
         }
 
@@ -411,7 +407,7 @@ namespace GrandChallengeGenome
                 exportStrings.Add($"> Built with k-mer of size {_kMerSize}.");
                 exportStrings.Add(contigModel.Contig);
             }
-            System.IO.File.WriteAllLines(Directory.GetCurrentDirectory()+$"\\rand.n.n50_{CalculateN50(contigsToExport)}.fa", exportStrings);
+            System.IO.File.WriteAllLines(Directory.GetCurrentDirectory() + $"\\rand.n.n50_{CalculateN50(contigsToExport)}.fa", exportStrings);
         }
 
         private void DeleteMarked()
@@ -462,7 +458,7 @@ namespace GrandChallengeGenome
             foreach (var bNextContigModel in b.NextContigModels.Keys)
             {
                 var success = bNextContigModel.PreviousContigModels.Remove(b);
-                bNextContigModel.PreviousContigModels.Add(a,b.NextContigModels[bNextContigModel]);
+                bNextContigModel.PreviousContigModels.Add(a, b.NextContigModels[bNextContigModel]);
             }
 
             a.NextContigModels = b.NextContigModels;

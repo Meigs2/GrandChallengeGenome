@@ -18,6 +18,8 @@ namespace GrandChallengeGenome.Models
 
         public bool VisitedEndNode { get; set; } = false;
 
+        public bool IsPartOfRoute { get; set; } = false;
+
         public bool MarkedForDeletion { get; set; } = false;
     }
 }
